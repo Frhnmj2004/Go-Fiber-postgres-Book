@@ -28,6 +28,24 @@ func (r *Repository) CreateBook(context *fiber.Ctx) error {
 		context.Status(http.StatusUnprocessableEntity).JSON(&fiber.Map{"message": "request failed"})
 		return err
 	}
+
+	err = r.DB.Create(&book).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(&fiber.Map{"message": "could not create book"})
+		return err
+	}
+
+	context.Status(http.StatusOK).JSON(&fiber.Map{"message": "book has been created"})
+	return nil
+}
+
+func (r *Repository) GetBooks(context *fiber.Ctx) error {
+	bookModels := &[]models.Books{}
+
+	err := r.DB.Find(bookModels).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(&fiber.Map{"message": "book not found"})
+	}
 }
 
 func (r *Repository) SetupRoutes(app *fiber.App) {
