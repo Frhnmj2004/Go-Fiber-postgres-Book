@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/Frhnmj2004/go-fiber-postgres/models"
+	"github.com/Frhnmj2004/go-fiber-postgres/storage"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
@@ -40,6 +43,25 @@ func (r *Repository) CreateBook(context *fiber.Ctx) error {
 	return nil
 }
 
+func (r *Repository) DeleteBook(context *fiber.Ctx) error {
+	bookModel := models.Books{}
+	id := context.Params("id")
+
+	if id == "" {
+		context.Status(http.StatusInternalServerError).JSON(&fiber.Map{"message": "id is required"})
+		return nil
+	}
+
+	err := r.DB.Delete(bookModel, id).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(&fiber.Map{"message": "could not delete book"})
+		return err
+	}
+
+	context.Status(http.StatusOK).JSON(&fiber.Map{"message": "book has been deleted"})
+	return nil
+}
+
 func (r *Repository) GetBooks(context *fiber.Ctx) error {
 	bookModels := &[]models.Books{}
 
@@ -50,6 +72,27 @@ func (r *Repository) GetBooks(context *fiber.Ctx) error {
 	}
 
 	context.Status(http.StatusOK).JSON(&fiber.Map{"message": "books have been fetched", "data": bookModels})
+	return nil
+}
+
+func (r *Repository) GetBookByID(context *fiber.Ctx) error {
+	id := context.Params("id")
+	bookModel := models.Books{}
+
+	if id == "" {
+		context.Status(http.StatusInternalServerError).JSON(&fiber.Map{"message": "id is required"})
+		return nil
+	}
+
+	fmt.Println("the id is", id)
+
+	err := r.DB.Where("id =?", id).First(&bookModel).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(&fiber.Map{"message": "book not found"})
+		return err
+	}
+
+	context.Status(http.StatusOK).JSON(&fiber.Map{"message": "book has been fetched", "data": bookModel})
 	return nil
 }
 
@@ -67,10 +110,23 @@ func main() {
 		log.Fatal(err)
 	}
 
+	config := &storage.Config{
+		Host:     os.Getenv("DB_HOST"),
+		Port:     os.Getenv("DB_PORT"),
+		Password: os.Getenv("DB_PASSWORD"),
+		User:     os.Getenv("DB_USER"),
+		SSLMode:  os.Getenv("DB_SSLMODE"),
+		DBName:   os.Getenv("DB_NAME"),
+	}
 	db, err := storage.NewConnection(config)
 
 	if err != nil {
 		log.Fatal("could not load database")
+	}
+
+	err = models.MigrateBooks(db)
+	if err != nil {
+		log.Fatal("could not migrate database")
 	}
 
 	r := Repository{
