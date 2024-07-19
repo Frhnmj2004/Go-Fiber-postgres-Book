@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Frhnmj2004/go-fiber-postgres/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
@@ -44,8 +45,12 @@ func (r *Repository) GetBooks(context *fiber.Ctx) error {
 
 	err := r.DB.Find(bookModels).Error
 	if err != nil {
-		context.Status(http.StatusBadRequest).JSON(&fiber.Map{"message": "book not found"})
+		context.Status(http.StatusBadRequest).JSON(&fiber.Map{"message": "book could not be found"})
+		return err
 	}
+
+	context.Status(http.StatusOK).JSON(&fiber.Map{"message": "books have been fetched", "data": bookModels})
+	return nil
 }
 
 func (r *Repository) SetupRoutes(app *fiber.App) {
